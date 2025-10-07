@@ -67,7 +67,7 @@ pip install tkinter scapy
 ### **Download & Setup**
 1. **Clone the repository:**
    ```bash
-   git clone 
+   git clone https://github.com/ScreamsTerror/DNS_ScreamWare.git
    cd ScreamWare
    ```
 
