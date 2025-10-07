@@ -1,0 +1,27 @@
+# ScreamWare DNS GUI - Required Dependencies
+# Install with: pip install -r requirements.txt
+
+# Core dependencies
+scapy>=2.4.5
+netifaces>=0.11.0
+
+# Optional dependencies for enhanced functionality
+Pillow>=9.0.0          # For image handling (creator photo)
+requests>=2.28.0        # For HTTP requests and API calls
+colorama>=0.4.4        # For colored terminal output
+
+# Platform-specific dependencies (uncomment if needed)
+# Windows:
+# pywin32>=304          # For Windows-specific functionality
+
+# Linux:
+# python3-tk            # Usually installed via package manager
+# python3-dev           # Development headers
+
+# macOS:
+# tk                    # Usually included with Python
+
+# Development dependencies (optional)
+# pytest>=7.0.0         # For testing
+# black>=22.0.0         # For code formatting
+# flake8>=4.0.0         # For linting
