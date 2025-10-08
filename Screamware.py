@@ -18,6 +18,8 @@ import shutil
 import subprocess
 import threading
 import atexit
+import random
+import platform
 import traceback
 from datetime import datetime
 from pathlib import Path
@@ -1714,12 +1716,16 @@ def simple_dns_lookup(domain, record_type="A"):
     except Exception as e:
         return f"DNS lookup failed: {e}"
 
-def change_mac_address(interface, new_mac):
+def generate_random_mac():
+    """Generate a random, locally administered, unicast MAC address"""
+    mac_bytes = [random.randint(0, 255) for _ in range(6)]
+    mac_bytes[0] &= 0xFC  # Clear multicast and globally unique bits
+    return ':'.join(f'{byte:02x}' for byte in mac_bytes)
+
+def change_mac_address(interface, new_mac, dry_run=False):
     """Change MAC address of network interface (Linux only)"""
     try:
-        import platform
         is_windows = platform.system() == "Windows"
-
         if is_windows:
             log_output("⚠️ MAC address changing not supported on Windows", "warning")
             return False
@@ -1730,8 +1736,12 @@ def change_mac_address(interface, new_mac):
             log_output(f"❌ Interface {interface} not found", "error")
             return False
 
+        # Handle random MAC generation
+        if new_mac.lower() == "random":
+            new_mac = generate_random_mac()
+
         # Validate MAC address format
-        mac_pattern = r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$'
+        mac_pattern = r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$|^[0-9A-Fa-f]{12}$'
         if not re.match(mac_pattern, new_mac):
             log_output("❌ Invalid MAC address format", "error")
             return False
@@ -1746,10 +1756,13 @@ def change_mac_address(interface, new_mac):
         ]
 
         for cmd in commands:
-            output, return_code = execute_command(cmd)
-            if return_code != 0:
-                log_output(f"❌ Failed to execute: {cmd}", "error")
-                return False
+            if dry_run:
+                log_output(f"[DRY RUN] Would execute: {cmd}", "info")
+            else:
+                output, return_code = execute_command(cmd)
+                if return_code != 0:
+                    log_output(f"❌ Failed to execute: {cmd}", "error")
+                    return False
 
         log_output(f"✅ MAC address changed successfully", "success")
         return True
