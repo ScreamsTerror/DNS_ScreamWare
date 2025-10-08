@@ -502,6 +502,74 @@ def load_config():
     except Exception as e:
         log_output(f"❌ Failed to load config: {e}", "error")
 
+def run_search_script():
+    """Execute the tools/Search.py script"""
+    try:
+        # Get the directory where Screamware.py is located
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        search_script_path = os.path.join(script_dir, "tools", "Search.py")
+
+        if os.path.exists(search_script_path):
+            log_output("🔍 Running Search script...", "info")
+            # Run the script in a separate thread to avoid blocking the GUI
+            threading.Thread(target=execute_search_script, daemon=True).start()
+        else:
+            log_output(f"❌ Search script not found at: {search_script_path}", "error")
+    except Exception as e:
+        log_output(f"❌ Error launching Search script: {e}", "error")
+
+def execute_search_script():
+    """Execute the search script and capture its output"""
+    try:
+        # Get the directory where Screamware.py is located
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        search_script_path = os.path.join(script_dir, "tools", "Search.py")
+
+        if not os.path.exists(search_script_path):
+            log_output(f"❌ Search script not found at: {search_script_path}", "error")
+            return
+
+        # Get URL and options from GUI variables
+        url = search_url_var.get().strip()
+        if not url:
+            log_output("❌ Please enter a URL to analyze", "warning")
+            return
+
+        download_resources = download_resources_var.get()
+
+        log_output(f"🔍 Running HTML grabber analysis on: {url}", "info")
+        if download_resources:
+            log_output("🔍 CSS/JS download enabled", "info")
+
+        # Build command with arguments
+        cmd = ["python", search_script_path, url]
+        if download_resources:
+            cmd.append("--resources")
+
+        process = subprocess.run(cmd,
+                               capture_output=True,
+                               text=True,
+                               timeout=60)
+
+        if process.returncode == 0:
+            if process.stdout:
+                log_output(f"✅ Search script output:\n{process.stdout}", "success")
+            else:
+                log_output("✅ Search script completed successfully", "success")
+        else:
+            if process.stderr:
+                log_output(f"❌ Search script error:\n{process.stderr}", "error")
+            if process.stdout:
+                log_output(f"📝 Script output:\n{process.stdout}", "info")
+            log_output(f"❌ Search script failed with exit code {process.returncode}", "error")
+
+    except subprocess.TimeoutExpired:
+        log_output("❌ Search script timed out after 30 seconds", "error")
+    except FileNotFoundError:
+        log_output("❌ Python interpreter not found", "error")
+    except Exception as e:
+        log_output(f"❌ Error running Search script: {e}", "error")
+
 # -----------------------
 # Domain management
 # -----------------------
@@ -2416,9 +2484,28 @@ load_config_button.pack(side=tk.LEFT, padx=5)
 export_button = tk.Button(button_frame, text="Export Logs", command=lambda: export_logs(), bg="#444", fg="white", font=("Arial", 10), padx=20, pady=5, relief=tk.RAISED, bd=2)
 export_button.pack(side=tk.LEFT, padx=5)
 
+search_button = tk.Button(button_frame, text="Search", command=run_search_script, bg="#1f6feb", fg="white", font=("Arial", 10), padx=20, pady=5, relief=tk.RAISED, bd=2)
+search_button.pack(side=tk.LEFT, padx=5)
+
 # install dependencies button (created here so _set_controls_enabled can reference it)
 install_deps_button = tk.Button(button_frame, text="Install Missing Dependencies", command=lambda: install_missing_dependencies(["nmap", "ettercap", "sudo"]), bg="#1f6feb", fg="white", font=("Arial", 10), padx=10, pady=5)
 install_deps_button.pack(side=tk.LEFT, padx=5)
+
+# HTML Grabber URL input frame
+search_input_frame = tk.Frame(main_frame, bg="#1e1e1e")
+search_input_frame.pack(fill=tk.X, pady=5)
+
+tk.Label(search_input_frame, text="HTML Grabber:", fg="white", bg="#1e1e1e", font=("Arial", 10, "bold")).pack(side=tk.LEFT, padx=5)
+tk.Label(search_input_frame, text="URL:", fg="white", bg="#1e1e1e", font=("Arial", 10)).pack(side=tk.LEFT, padx=2)
+
+search_url_var = tk.StringVar(value="example.com")
+search_url_entry = tk.Entry(search_input_frame, textvariable=search_url_var, bg="#2d2d2d", fg="white", font=("Arial", 10), width=25)
+search_url_entry.pack(side=tk.LEFT, padx=5)
+
+download_resources_var = tk.BooleanVar(value=False)
+download_resources_check = tk.Checkbutton(search_input_frame, text="Download CSS/JS", variable=download_resources_var,
+                                         bg="#1e1e1e", fg="white", selectcolor="#2d2d2d", activebackground="#1e1e1e", activeforeground="white")
+download_resources_check.pack(side=tk.LEFT, padx=5)
 
 # Output area
 output_frame = tk.Frame(main_frame, bg="#1e1e1e")
@@ -2536,7 +2623,7 @@ def preview_via_apache():
         return
 
     fname = file_listbox.get(sel[0])
-    apache_url = f"http://127.0.0.1/screamware_lab/{fname}"
+    apache_url = f"http://{local_ip}/{fname}"
 
     def start_and_preview():
         # Check if we're on Windows
