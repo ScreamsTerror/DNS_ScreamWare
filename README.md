@@ -78,7 +78,7 @@ pip install tkinter scapy
 
 3. **Run the application:**
    ```bash
-   python DNSGUI.py
+   python Screamware.py
    ```
 
 ### **Platform-specific Setup**
